@@ -4,7 +4,7 @@ from aiogram.utils import executor
 from flask import Flask
 from threading import Thread
 
-# === Flask для "бессмертия" на Replit ===
+# === Flask для keep_alive на Replit ===
 app = Flask('')
 
 @app.route('/')
@@ -18,30 +18,32 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-BOT_TOKEN = os.environ.get("8270459802:AAEpOWJ3VjxSupzCx7MBsl10VeT4nXSmNIM")
-PROVIDER_TOKEN = os.environ.get("2051251535:TEST:OTk5MDA4ODgxLTAwNQ")
+# === Токены через Secrets Replit ===
+BOT_TOKEN = os.environ.get("BOT_TOKEN")           # добавь через Replit Secrets
+PROVIDER_TOKEN = os.environ.get("PROVIDER_TOKEN") # токен Яндекс.Кассы через Secrets
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
 
-# Альбом
+# === Альбом ===
 album = {
     "title": "Доступ к нашей музыке",
-    "description": "Внимание, дружище! Тебя ждёт лайв-запись с нашего концерта!\n"
-                   "Живая энергетика, реальные эмоции, без студийной обработки!\n"
-                   "Если вдруг звук не зайдёт, без проблем вернём деньги!\n"
-                   
-    "price": 50000,  # в копейках
+    "description": (
+        "Внимание, дружище! Тебя ждёт лайв-запись с нашего концерта!\n"
+        "Живая энергетика, реальные эмоции, без студийной обработки!\n"
+        "Если вдруг звук не зайдёт, без проблем вернём деньги!"
+    ),
+    "price": 50000,  # в копейках (500 руб)
     "download_link": "https://disk.yandex.ru/d/ZGdxYMizv8M78g"
 }
 
-# Стартовое сообщение с картинкой
+# === Стартовое сообщение с картинкой и кнопками ===
 @dp.message_handler(commands=['start'])
 async def start(msg: types.Message):
     keyboard = types.InlineKeyboardMarkup()
     keyboard.add(types.InlineKeyboardButton(
         text="Доступ к нашей музыке",
-        callback_data="show_album"
+        callback_data="buy_album"
     ))
     keyboard.add(types.InlineKeyboardButton(
         text="Поддержка",
@@ -57,14 +59,13 @@ async def start(msg: types.Message):
     ))
     await bot.send_photo(
         chat_id=msg.chat.id,
-        photo="https://i.postimg.cc/y8WttMHX/photo-2025-09-09-13-29-45.jpg",  # стартовая картинка
+        photo="https://i.postimg.cc/y8WttMHX/photo-2025-09-09-13-29-45.jpg",
         caption="Привет, меломан! Рады видеть тебя в нашем музыкальном уголке!\n"
                 "Здесь можно достать эксклюзивчик от Two Violins – погрузиться в наш симфорок и кайфануть по полной!😎",
         reply_markup=keyboard
     )
 
-
-# Кнопка "Купить"
+# === Обработчик оплаты ===
 @dp.callback_query_handler(lambda c: c.data == "buy_album")
 async def process_buy_callback(callback_query: types.CallbackQuery):
     prices = [types.LabeledPrice(label=album["title"], amount=album["price"])]
@@ -77,18 +78,18 @@ async def process_buy_callback(callback_query: types.CallbackQuery):
         prices=prices,
         start_parameter="buy-album",
         payload=album["title"],
-        photo_url=https://i.postimg.cc/FHwdwCzK/KUPIT-DOSTUP.png
+        photo_url="https://i.postimg.cc/FHwdwCzK/KUPIT-DOSTUP.png",
         photo_width=600,
         photo_height=600,
         photo_size=600
     )
 
-# Подтверждение оплаты
+# === Подтверждение оплаты ===
 @dp.pre_checkout_query_handler(lambda q: True)
 async def process_checkout(pre_checkout_query: types.PreCheckoutQuery):
     await bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True)
 
-# После успешной оплаты
+# === После успешной оплаты ===
 @dp.message_handler(content_types=types.ContentType.SUCCESSFUL_PAYMENT)
 async def successful_payment(msg: types.Message):
     await msg.answer(
@@ -98,7 +99,7 @@ async def successful_payment(msg: types.Message):
         f"Приятного прослушивания! 🎧"
     )
 
-# === Запуск ===
+# === Запуск бота и Flask ===
 if name == "__main__":
-    keep_alive()  # держим бота живым
+    keep_alive()  # держим бот живым на Replit
     executor.start_polling(dp, skip_updates=True)
